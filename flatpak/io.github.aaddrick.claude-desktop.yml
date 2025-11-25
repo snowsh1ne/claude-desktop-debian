@@ -70,8 +70,10 @@ modules:
         path: app.asar
       - type: dir
         path: app.asar.unpacked
+        dest: app.asar.unpacked
       - type: dir
         path: icons
+        dest: icons
       - type: file
         path: claude-desktop.sh
       - type: file
