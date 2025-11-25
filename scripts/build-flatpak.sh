@@ -89,22 +89,41 @@ sed -i "s/DATE/$(date +%Y-%m-%d)/g" "$STAGING/$FLATPAK_ID.metainfo.xml"
 echo "Cloning shared-modules..."
 cd "$STAGING"
 if [ ! -d "shared-modules" ]; then
-    git clone --depth=1 https://github.com/flathub/shared-modules.git
+    if ! git clone --depth=1 https://github.com/flathub/shared-modules.git; then
+        echo "ERROR: Failed to clone shared-modules repository"
+        exit 1
+    fi
 fi
+
+# Verify shared-modules files exist
+if [ ! -f "shared-modules/libappindicator/libappindicator-gtk3-12.10.json" ]; then
+    echo "ERROR: Required shared-modules file not found: libappindicator-gtk3-12.10.json"
+    exit 1
+fi
+if [ ! -f "shared-modules/dbus-glib/dbus-glib.json" ]; then
+    echo "ERROR: Required shared-modules file not found: dbus-glib.json"
+    exit 1
+fi
+echo "✓ shared-modules cloned and verified"
 
 # --- Copy manifest ---
 cp "$PROJECT_ROOT/flatpak/$FLATPAK_ID.yml" "$STAGING/"
 
-# --- Install Flatpak runtimes if needed ---
-echo "Ensuring Flatpak runtimes are installed..."
+# --- Verify Flatpak runtimes ---
+echo "Verifying Flatpak runtimes are available..."
 
-# Add flathub remote if not present
+# Add flathub remote if not present (needed for local builds)
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
-# Install required runtimes
-flatpak install --user -y --noninteractive flathub org.freedesktop.Platform//24.08 || true
-flatpak install --user -y --noninteractive flathub org.freedesktop.Sdk//24.08 || true
-flatpak install --user -y --noninteractive flathub org.electronjs.Electron2.BaseApp//24.08 || true
+# Check if runtimes are installed (CI installs them in workflow, local builds may need to install)
+if ! flatpak info --user org.freedesktop.Platform//24.08 &>/dev/null; then
+    echo "Installing Flatpak runtimes (this may take a while on first run)..."
+    flatpak install --user -y --noninteractive flathub org.freedesktop.Platform//24.08 || true
+    flatpak install --user -y --noninteractive flathub org.freedesktop.Sdk//24.08 || true
+    flatpak install --user -y --noninteractive flathub org.electronjs.Electron2.BaseApp//24.08 || true
+else
+    echo "✓ Flatpak runtimes already installed"
+fi
 
 # --- Build Flatpak ---
 echo "Building Flatpak..."
