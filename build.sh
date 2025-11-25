@@ -99,8 +99,8 @@ while [[ $# -gt 0 ]]; do
         shift # past argument
         ;;
         -h|--help)
-        echo "Usage: $0 [--build deb|appimage] [--clean yes|no] [--test-flags]"
-        echo "  --build: Specify the build format (deb or appimage). Default: deb"
+        echo "Usage: $0 [--build deb|appimage|flatpak] [--clean yes|no] [--test-flags]"
+        echo "  --build: Specify the build format (deb, appimage, or flatpak). Default: deb"
         echo "  --clean: Specify whether to clean intermediate build files (yes or no). Default: yes"
         echo "  --test-flags: Parse flags, print results, and exit without building."
         exit 0
@@ -114,8 +114,8 @@ done
 
 # Validate arguments
 BUILD_FORMAT=$(echo "$BUILD_FORMAT" | tr '[:upper:]' '[:lower:]') CLEANUP_ACTION=$(echo "$CLEANUP_ACTION" | tr '[:upper:]' '[:lower:]')
-if [[ "$BUILD_FORMAT" != "deb" && "$BUILD_FORMAT" != "appimage" ]]; then
-    echo "❌ Invalid build format specified: '$BUILD_FORMAT'. Must be 'deb' or 'appimage'." >&2
+if [[ "$BUILD_FORMAT" != "deb" && "$BUILD_FORMAT" != "appimage" && "$BUILD_FORMAT" != "flatpak" ]]; then
+    echo "❌ Invalid build format specified: '$BUILD_FORMAT'. Must be 'deb', 'appimage', or 'flatpak'." >&2
     exit 1
 fi
 if [[ "$CLEANUP_ACTION" != "yes" && "$CLEANUP_ACTION" != "no" ]]; then
@@ -788,6 +788,25 @@ EOF
         echo "Warning: Could not determine final .AppImage file path from $WORK_DIR for ${ARCHITECTURE}."
         FINAL_OUTPUT_PATH="Not Found"
     fi
+
+elif [ "$BUILD_FORMAT" = "flatpak" ]; then
+    echo "📦 Calling Flatpak packaging script for $ARCHITECTURE..."
+    chmod +x scripts/build-flatpak.sh
+    if ! scripts/build-flatpak.sh \
+        "$VERSION" "$ARCHITECTURE" "$WORK_DIR" "$APP_STAGING_DIR" "$PACKAGE_NAME"; then
+        echo "❌ Flatpak packaging script failed."
+        exit 1
+    fi
+    FLATPAK_FILE=$(find "$WORK_DIR" -maxdepth 1 -name "${PACKAGE_NAME}-${VERSION}-${ARCHITECTURE}.flatpak" | head -n 1)
+    echo "✓ Flatpak Build complete!"
+    if [ -n "$FLATPAK_FILE" ] && [ -f "$FLATPAK_FILE" ]; then
+        FINAL_OUTPUT_PATH="./$(basename "$FLATPAK_FILE")"
+        mv "$FLATPAK_FILE" "$FINAL_OUTPUT_PATH"
+        echo "Package created at: $FINAL_OUTPUT_PATH"
+    else
+        echo "Warning: Could not determine final .flatpak file path from $WORK_DIR for ${ARCHITECTURE}."
+        FINAL_OUTPUT_PATH="Not Found"
+    fi
 fi
 
 
@@ -842,6 +861,16 @@ elif [ "$BUILD_FORMAT" = "appimage" ]; then
         fi
     else
         echo -e "⚠️ AppImage file not found. Cannot provide usage instructions."
+    fi
+elif [ "$BUILD_FORMAT" = "flatpak" ]; then
+    if [ "$FINAL_OUTPUT_PATH" != "Not Found" ] && [ -e "$FINAL_OUTPUT_PATH" ]; then
+        echo -e "✅ Flatpak bundle created at: \033[1;36m$FINAL_OUTPUT_PATH\033[0m"
+        echo -e "\n📦 To install the Flatpak bundle, run:"
+        echo -e "   \033[1;32mflatpak install --user $FINAL_OUTPUT_PATH\033[0m"
+        echo -e "\n🚀 To run Claude Desktop:"
+        echo -e "   \033[1;32mflatpak run io.github.aaddrick.claude-desktop\033[0m"
+    else
+        echo -e "⚠️ Flatpak bundle not found. Cannot provide installation instructions."
     fi
 fi
 echo -e "\033[1;34m======================\033[0m"

@@ -16,8 +16,9 @@ node_modules/
 Thumbs.db
 
 *.AppImage
-*.desktop
+/*.desktop
 *.deb
+*.flatpak
 
 .claude/
 CLAUDE.md
