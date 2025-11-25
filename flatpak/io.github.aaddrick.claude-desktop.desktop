@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Claude Desktop
+Comment=Claude AI Desktop Application
+Exec=claude-desktop %u
+Icon=io.github.aaddrick.claude-desktop
+Type=Application
+Terminal=false
+Categories=Office;Utility;Network;
+MimeType=x-scheme-handler/claude;
+StartupWMClass=Claude

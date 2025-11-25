@@ -13,6 +13,7 @@ on:
     paths:
       - "build.sh"
       - "scripts/**"
+      - "flatpak/**"
       - ".github/workflows/**"
     tags:
       - "v*"
@@ -65,10 +66,19 @@ jobs:
       build_flags: ${{ matrix.flags }}
       artifact_suffix: ${{ matrix.artifact_suffix }}
 
+  build-flatpak:
+    name: Build Flatpak (amd64)
+    needs: test-flags
+
+    uses: ./.github/workflows/build-flatpak.yml
+    with:
+      build_flags: "--clean no"
+      artifact_suffix: "flatpak"
+
   release:
     name: Create Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test-flags, build-amd64, build-arm64]
+    needs: [test-flags, build-amd64, build-arm64, build-flatpak]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -96,6 +106,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: package-arm64-appimage
+          path: artifacts/
+
+      - name: Download Flatpak artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: package-amd64-flatpak
           path: artifacts/
 
       - name: Create GitHub Release

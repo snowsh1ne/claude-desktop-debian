@@ -1,0 +1,86 @@
+app-id: io.github.aaddrick.claude-desktop
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '24.08'
+command: claude-desktop
+separate-locales: false
+
+finish-args:
+  # X11 display
+  - --share=ipc
+  - --socket=x11
+
+  # Audio
+  - --socket=pulseaudio
+
+  # Network (required for Claude API)
+  - --share=network
+
+  # GPU acceleration
+  - --device=dri
+
+  # Config directory
+  - --filesystem=~/.config/Claude:create
+
+  # Notifications
+  - --talk-name=org.freedesktop.Notifications
+
+  # System tray
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+modules:
+  - shared-modules/libappindicator/libappindicator-gtk3-12.10.json
+  - shared-modules/dbus-glib/dbus-glib.json
+
+  - name: claude-desktop
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/lib/electron /app/lib/resources /app/bin
+      - mkdir -p /app/share/applications /app/share/metainfo
+      - mkdir -p /app/share/icons/hicolor/256x256/apps
+      - mkdir -p /app/share/icons/hicolor/128x128/apps
+      - mkdir -p /app/share/icons/hicolor/64x64/apps
+      - mkdir -p /app/share/icons/hicolor/48x48/apps
+      - mkdir -p /app/share/icons/hicolor/32x32/apps
+      - mkdir -p /app/share/icons/hicolor/16x16/apps
+
+      - cp -r electron-dist/* /app/lib/electron/
+      - chmod +x /app/lib/electron/electron
+
+      - cp app.asar /app/lib/resources/
+      - cp -r app.asar.unpacked /app/lib/resources/
+
+      - install -Dm644 icons/256x256.png /app/share/icons/hicolor/256x256/apps/io.github.aaddrick.claude-desktop.png
+      - install -Dm644 icons/64x64.png /app/share/icons/hicolor/64x64/apps/io.github.aaddrick.claude-desktop.png
+      - install -Dm644 icons/48x48.png /app/share/icons/hicolor/48x48/apps/io.github.aaddrick.claude-desktop.png
+      - install -Dm644 icons/32x32.png /app/share/icons/hicolor/32x32/apps/io.github.aaddrick.claude-desktop.png
+      - install -Dm644 icons/16x16.png /app/share/icons/hicolor/16x16/apps/io.github.aaddrick.claude-desktop.png
+
+      - install -Dm755 claude-desktop.sh /app/bin/claude-desktop
+      - install -Dm644 io.github.aaddrick.claude-desktop.desktop /app/share/applications/
+      - install -Dm644 io.github.aaddrick.claude-desktop.metainfo.xml /app/share/metainfo/
+
+    sources:
+      - type: dir
+        path: electron-dist
+        dest: electron-dist
+      - type: file
+        path: app.asar
+      - type: dir
+        path: app.asar.unpacked
+      - type: dir
+        path: icons
+      - type: file
+        path: claude-desktop.sh
+      - type: file
+        path: io.github.aaddrick.claude-desktop.desktop
+      - type: file
+        path: io.github.aaddrick.claude-desktop.metainfo.xml
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - '*.la'
+  - '*.a'

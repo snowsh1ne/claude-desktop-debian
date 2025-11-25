@@ -1,0 +1,52 @@
+name: Build Flatpak Package (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      build_flags:
+        description: 'Additional flags to pass to build.sh'
+        required: false
+        type: string
+        default: ""
+      artifact_suffix:
+        description: "Suffix for the artifact name"
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Flatpak and flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add Flathub repository
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install Flatpak runtimes and SDK
+        run: |
+          flatpak install --user -y --noninteractive flathub org.freedesktop.Platform//24.08
+          flatpak install --user -y --noninteractive flathub org.freedesktop.Sdk//24.08
+          flatpak install --user -y --noninteractive flathub org.electronjs.Electron2.BaseApp//24.08
+
+      - name: Make build script executable
+        run: chmod +x ./build.sh
+
+      - name: Run build script
+        run: |
+          ./build.sh --build flatpak ${{ inputs.build_flags }}
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-amd64-${{ inputs.artifact_suffix }}
+          path: |
+            claude-desktop-*.flatpak
+          if-no-files-found: error
